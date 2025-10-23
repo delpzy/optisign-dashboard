@@ -1,9 +1,54 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="refresh" content="0; url=https://cablebullet.pipedrive.com/share/cdb9a2e8fcd6e0d69cc6812ee60b0468eedcd871f598319cc5b032f0d520aae2" />
-    <title>Redirecting…</title>
-  </head>
-  <body></body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sales TV</title>
+  <style>
+    body{margin:0;background:#0b0b0e;color:#e8e8ea;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .kpi{padding:20px;border-radius:14px;background:#15151b;margin:14px;display:inline-block;min-width:220px}
+    .label{color:#a6a6ad;text-transform:uppercase;font-size:12px;letter-spacing:.7px}
+    .value{font-size:34px;font-weight:800}
+  </style>
+</head>
+<body>
+  <div style="padding:20px">
+    <div class="kpi"><div class="label">Won Today</div><div id="wonToday" class="value">—</div></div>
+    <div class="kpi"><div class="label">Won MTD</div><div id="wonMTD" class="value">—</div></div>
+    <div class="kpi"><div class="label">Open Pipeline</div><div id="openCount" class="value">—</div></div>
+    <div class="kpi"><div class="label">Open Value</div><div id="openValue" class="value">—</div></div>
+  </div>
+
+  <script>
+    const money = n => (n||0).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
+    const int = n => (n||0).toLocaleString();
+    const sod = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const som = d => new Date(d.getFullYear(), d.getMonth(), 1);
+
+    async function pd(path, params={}) {
+      const qs = new URLSearchParams(params).toString();
+      const r = await fetch(`/api/pd?path=${encodeURIComponent(path)}&params=${encodeURIComponent(qs)}`);
+      if (!r.ok) throw new Error('pd failed'); return r.json();
+    }
+
+    async function load() {
+      const now = new Date();
+      const won  = await pd('/deals',{status:'won',limit:500,sort_by:'won_time',sort_order:'desc'});
+      const open = await pd('/deals',{status:'open',limit:500});
+      const wonDeals  = won.data||[];
+      const openDeals = open.data||[];
+
+      const wonToday = wonDeals.filter(d => d.won_time && new Date(d.won_time) >= sod(now));
+      const wonMTD   = wonDeals.filter(d => d.won_time && new Date(d.won_time) >= som(now));
+      const openValue = openDeals.reduce((s,d)=>s+(+d.value||0),0);
+
+      document.getElementById('wonToday').textContent = int(wonToday.length);
+      document.getElementById('wonMTD').textContent   = int(wonMTD.length);
+      document.getElementById('openCount').textContent= int(openDeals.length);
+      document.getElementById('openValue').textContent= money(openValue);
+    }
+
+    load(); setInterval(load, 60000);
+  </script>
+</body>
 </html>
